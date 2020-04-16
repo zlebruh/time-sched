@@ -41,18 +41,22 @@ class Task {
     this.callback = Task.spawnCallback(params.callback, this);
 
     const { tree } = options;
+    const props = {};
     switch (type) {
       case AFTER:
-        this.on = Date.now() + params.after;
+        props.on = Date.now() + params.after;
         break;
       case REPEAT:
-        this.iterations = tree.iterations || 0;
-        this.iteration = 0;
-        this.interval = tree.interval;
-        this.lastUpdate = 0;
+        props.iterations = tree.iterations || 0;
+        props.iteration = 0;
+        props.interval = tree.interval;
+        props.lastUpdate = 0;
         break;
       default: break;
     }
+
+    // Assign each property as an immutable type.
+    zletools.addProps(props, this)
   }
 
   /**

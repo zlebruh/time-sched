@@ -34,11 +34,13 @@ function getRAF(forceFallback) {
     return getRAFFallback();
   }
 
-  return window.requestAnimationFrame
-    || window.oRequestAnimationFrame
-    || window.msRequestAnimationFrame
-    || window.mozRequestAnimationFrame
-    || window.webkitRequestAnimationFrame || getRAFFallback();
+  const GLOBAL = global.window || {};
+
+  return GLOBAL.requestAnimationFrame
+    || GLOBAL.oRequestAnimationFrame
+    || GLOBAL.msRequestAnimationFrame
+    || GLOBAL.mozRequestAnimationFrame
+    || GLOBAL.webkitRequestAnimationFrame || getRAFFallback();
 }
 
 /**

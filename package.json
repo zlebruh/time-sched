@@ -1,6 +1,6 @@
 {
   "name": "time-sched",
-  "version": "1.0.0",
+  "version": "1.0.0a",
   "description": "Dumb scheduler that doesn't care about priorities and such",
   "main": "index.js",
   "scripts": {
@@ -17,7 +17,7 @@
   },
   "homepage": "https://github.com/zlebruh/time-sched#readme",
   "dependencies": {
-    "json-valid-3k": "^1.0.1-a",
-    "zletools": "^1.0.0-a"
+    "json-valid-3k": "^1.0.1-c",
+    "zletools": "^1.0.0-b"
   }
 }
