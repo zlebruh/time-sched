@@ -5,11 +5,12 @@ const zletools = require('zletools');
 let running = false;
 const prefix = '### Scheduler';
 const regex = {
-  wait: /^{to:([0-9]{3,10})}$/,
+  wait: /^{to:([0-9]{1,10})}$/,
 };
 
 // Tick rate
-const min = 250; // Quarter second
+// const min = 250; // Quarter second
+const min = 0; // No time to waste, only cycles
 const max = 86400000; // 24 hours
 let RAF = getRAF(); // eslint-disable-line
 
@@ -54,12 +55,17 @@ function changeRAF(forceFallback) {
 /** ************************* RequestAnimationFrame -  End  ********** */
 
 class Scheduler {
-  constructor() {
+  constructor(minWait = min) {
+    if (minWait < min) {
+      Scheduler.logError(`Chosen default tick rate [${minWait}] is less than [${min}] and will default to [${min}]`);
+      minWait = min;
+    }
+
     Object.defineProperties(this, {
       RAF: { get: () => RAF },
-      min: { value: min },
+      min: { value: minWait },
       max: { value: max },
-      wait: this.spawnWait(min),
+      wait: this.spawnWait(minWait),
       list: { value: {} },
       running: { get: () => running },
       lastTick: { value: 0, writable: true },
@@ -88,13 +94,9 @@ class Scheduler {
    */
   canAdd(name) {
     if (this.has(name)) {
-      console.log(prefix, Scheduler.hasTaskText(name));
-      return false;
-    }
-
-    if (!zletools.isString(name, true)) {
-      console.log(prefix, zletools.textNotString(name, 'name'));
-      return false;
+      return Scheduler.logError(Scheduler.hasTaskText(name));
+    } else if (!zletools.isString(name, true)) {
+      return Scheduler.logError(zletools.textNotString(name, 'name'));
     }
 
     return true;
@@ -111,10 +113,8 @@ class Scheduler {
         return true;
       }
     } catch (err) {
-      console.log(prefix, err);
+      return Scheduler.logError(err);
     }
-
-    return false;
   }
 
   /**
@@ -147,7 +147,7 @@ class Scheduler {
     } catch (err) {
       // We throw an error unless we're told not to
       if (args[2]) {
-        console.log(prefix, err);
+        Scheduler.logError(err);
       }
     }
 
@@ -164,59 +164,52 @@ class Scheduler {
         this.list[params.name] = new Task(params);
         return true;
       }
-      console.log(prefix, Scheduler.noTaskText(params.name));
+      return Scheduler.logError(Scheduler.noTaskText(params.name));
     } catch (err) {
-      console.log(prefix, err);
+      return Scheduler.logError(err);
     }
-
-    return false;
   }
 
   /**
    * @param {string} name
-   * @param {boolean} [throwErr]
-   * @returns {Scheduler}
+   * @returns {boolean}
    */
-  remove(name = '', throwErr) {
+  remove(name = '') {
     if (!zletools.isString(name, true)) {
-      console.log(zletools.textNotString(name));
+      return Scheduler.logError(zletools.textNotString(name));
+    } else if (!this.has(name)) {
+      return Scheduler.logError(Scheduler.noTaskText(name));
     }
 
-    if (!this.has(name) && throwErr === true) {
-      throw new Error(Scheduler.noTaskText(name));
-    } else {
-      delete this.list[name];
-    }
-
-    return this;
+    delete this.list[name];
+    return true;
   }
 
   /**
    * @param {array} list
-   * @returns {Scheduler}
+   * @returns {boolean}
    */
   removeList(list = []) {
     if (Array.isArray(list)) {
       list.forEach((item) => this.remove(item));
-    } else {
-      zletools.throwNotArray(list, 'list');
+      return true;
     }
 
-    return this;
+    zletools.throwNotArray(list, 'list');
+    return false;
   }
 
   /**
-   * @returns {Scheduler}
+   * @returns {boolean}
    */
   empty() {
     try {
       const { list } = this;
       Object.keys(list).forEach(key => delete list[key]);
+      return true;
     } catch (err) {
-      console.log(prefix, err);
+      return Scheduler.logError(err);
     }
-
-    return this;
   }
 
   /**
@@ -228,12 +221,12 @@ class Scheduler {
       const value = this.getValidWait(val);
       if (value) {
         this.wait = value;
+        return true;
       }
+      return false;
     } catch (err) {
-      console.log(prefix, err);
+      return Scheduler.logError(err);
     }
-
-    return this;
   }
 
   /**
@@ -244,7 +237,7 @@ class Scheduler {
     let result = '';
     if (zletools.isNumber(val)) {
       if (val === this.wait) {
-        throw new Error(`The ne value [${val}] is the same as the current one [${this.wait}]`);
+        throw new Error(`The new value [${val}] is the same as the current one [${this.wait}]`);
       } else {
         result = `{to:${val}}`;
       }
@@ -277,7 +270,7 @@ class Scheduler {
         });
       }
     } catch (err) {
-      console.log(prefix, err);
+      Scheduler.logError(err);
       this.remove(taskName);
     }
   }
@@ -314,8 +307,14 @@ class Scheduler {
     return this;
   }
 
-  throwOutOfRange() {
-    throw new TypeError(`Use the "changeWait" method. Acceptable range is ${this.min}-${this.max}`);
+  throwOutOfRange(skipMethodHint = false) {
+    const textRange = `Acceptable range is ${this.min}-${this.max}ms.`;
+    const textMethodHint = 'Always use the "changeWait" method.';
+    
+    const text = skipMethodHint
+      ? textRange
+      : `${textMethodHint} ${textRange}`;
+    throw new TypeError(text);
   }
 
   /**
@@ -337,7 +336,7 @@ class Scheduler {
           if ((number >= this.min && number <= this.max)) {
             wait = Number(number);
           } else {
-            this.throwOutOfRange();
+            this.throwOutOfRange(true);
           }
         } else {
           this.throwOutOfRange();
@@ -353,7 +352,7 @@ class Scheduler {
    * @returns {string}
    */
   static hasTaskText(name) {
-    return `There's already a task with name: ${name}. Use the "replace" method instead.`;
+    return `There's already a task "${name}". Always use the "replace" method.`;
   }
 
   /**
@@ -361,7 +360,16 @@ class Scheduler {
    * @returns {string}
    */
   static noTaskText(name) {
-    return `There's no task with name: ${name}`;
+    return `There's no task "${name}"`;
+  }
+
+  /**
+   * @param {string} name
+   * @returns {false}
+   */
+  static logError(errorText) {
+    console.error(prefix, errorText);
+    return false;
   }
 }
 
