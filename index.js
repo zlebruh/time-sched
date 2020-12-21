@@ -55,23 +55,46 @@ function changeRAF(forceFallback) {
 /** ************************* RequestAnimationFrame -  End  ********** */
 
 class Scheduler {
-  constructor(minWait = min) {
-    if (minWait < min) {
-      Scheduler.logError(`Chosen default tick rate [${minWait}] is less than [${min}] and will default to [${min}]`);
-      minWait = min;
+  constructor(props) {
+    if (zletools.isNumber(props)) {
+      props = { heartbeat: props };
+    }
+
+    const { heartbeat = min, keepAlive = false } = props;
+    if (heartbeat < min) {
+      Scheduler.logError(`Chosen default tick rate [${heartbeat}] is less than [${min}] and will default to [${min}]`);
+      heartbeat = min;
+    }
+
+    if (keepAlive === true) {
+      this._subscribe();
     }
 
     Object.defineProperties(this, {
       RAF: { get: () => RAF },
-      min: { value: minWait },
+      min: { value: heartbeat },
       max: { value: max },
-      wait: this.spawnWait(minWait),
+      wait: this._spawnWait(heartbeat),
+      keepAlive: { value: keepAlive },
       list: { value: {} },
       running: { get: () => running },
       lastTick: { value: 0, writable: true },
     });
 
     changeRAF();
+  }
+
+  // EVENTS
+  _handleVisibilityChange() {
+    changeRAF(document.hidden);
+    this._loop();
+  }
+
+  _subscribe() {
+    document.addEventListener('visibilitychange',
+      () => this._handleVisibilityChange(),
+      false,
+    );
   }
 
   /**
@@ -122,7 +145,7 @@ class Scheduler {
    * @returns {*}
    */
   enableTask(name = '') {
-    return this.doTask(name, 'enable');
+    return this._doTask(name, 'enable');
   }
 
   /**
@@ -131,13 +154,13 @@ class Scheduler {
    * @returns {*}
    */
   disableTask(name = '', throwErr = true) {
-    return this.doTask(name, 'disable', throwErr);
+    return this._doTask(name, 'disable', throwErr);
   }
 
   /**
    * @returns {Scheduler}
    */
-  doTask(...args) {
+  _doTask(...args) {
     try {
       zletools.checkForNumberOfArguments(2, args);
       const [name, action] = args;
@@ -218,7 +241,7 @@ class Scheduler {
    */
   changeWait(val) {
     try {
-      const value = this.getValidWait(val);
+      const value = this._getValidWait(val);
       if (value) {
         this.wait = value;
         return true;
@@ -230,10 +253,30 @@ class Scheduler {
   }
 
   /**
+   * @param {string} name
+   * @param {number} val
+   * @returns {boolean}
+   */
+  changeTaskWait(name, val) {
+    try {
+      const task = this.list[name];
+
+      if (task) {
+        task.interval = val;
+        return task.interval === val;
+      }
+
+      return false;
+    } catch (err) {
+      return Scheduler.logError(err);
+    }
+  }
+
+  /**
    * @param {number} val
    * @returns {string}
    */
-  getValidWait(val) {
+  _getValidWait(val) {
     let result = '';
     if (zletools.isNumber(val)) {
       if (val === this.wait) {
@@ -248,7 +291,7 @@ class Scheduler {
     return result;
   }
 
-  tick(now = Date.now()) {
+  _tick(now = Date.now()) {
     let taskName = '';
     try {
       if (running) {
@@ -275,7 +318,7 @@ class Scheduler {
     }
   }
 
-  loop() {
+  _loop() {
     /**
      * @type {Scheduler}
      */
@@ -283,12 +326,12 @@ class Scheduler {
       const now = Date.now();
       const delta = now - this.lastTick;
       if (delta > this.wait) {
-        this.tick(now);
+        this._tick(now);
         this.lastTick = now;
       }
 
       if (running) {
-        this.loop();
+        this._loop();
       }
     });
   }
@@ -296,7 +339,7 @@ class Scheduler {
   start() {
     if (!running) {
       running = true;
-      this.loop();
+      this._loop();
     }
 
     return this;
@@ -307,8 +350,9 @@ class Scheduler {
     return this;
   }
 
-  throwOutOfRange(skipMethodHint = false) {
-    const textRange = `Acceptable range is ${this.min}-${this.max}ms.`;
+  _throwOutOfRange(skipMethodHint = false) {
+    const textRange = `Acceptable range is ${this.min}-${this.max}ms.
+    This value CANNOT be lower than the initial "every" value [${this.min}]\n`;
     const textMethodHint = 'Always use the "changeWait" method.';
     
     const text = skipMethodHint
@@ -321,7 +365,7 @@ class Scheduler {
    * @param {number} initWait
    * @returns {number|*}
    */
-  spawnWait(initWait = 250) {
+  _spawnWait(initWait = 250) {
     if (this.wait) {
       return this.wait;
     }
@@ -336,10 +380,10 @@ class Scheduler {
           if ((number >= this.min && number <= this.max)) {
             wait = Number(number);
           } else {
-            this.throwOutOfRange(true);
+            this._throwOutOfRange(true);
           }
         } else {
-          this.throwOutOfRange();
+          this._throwOutOfRange();
         }
 
         return val;

@@ -1,7 +1,7 @@
 {
   "name": "time-sched",
-  "version": "1.0.0b",
-  "description": "Dumb scheduler replacement for setInterval and setTimeout.",
+  "version": "1.0.0c",
+  "description": "RequestAnimationFrame based cheduler replacement for setInterval and setTimeout.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -17,7 +17,7 @@
   },
   "homepage": "https://github.com/zlebruh/time-sched#readme",
   "dependencies": {
-    "json-valid-3k": "^1.0.1-c",
-    "zletools": "^1.0.0-b"
+    "json-valid-3k": "^1.0.1-f",
+    "zletools": "^1.0.0-d"
   }
 }

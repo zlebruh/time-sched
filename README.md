@@ -1,6 +1,51 @@
 # time-sched
 Dumb scheduler that doesn't care about priorities and such
 
+<hr />
+
+## Full example
+```javascript
+const Scheduler = require('time-sched');
+
+const scheduler = new Scheduler({heartbeat: 250}).start();
+
+// Repeating task
+scheduler.add({
+  name: 'AAA_1',
+  interval: 1000,
+  iterations: 7, // Optional. Task is destroyed afterwards
+  callback: (task) => console.log(task.name, task.iteration)
+});
+
+// Only executed once
+scheduler.add({
+  name: 'BBB',
+  after: 5000, // Optional. Task is executed and destroyed afterwards
+  callback: () => console.error('OH YEAH')
+});
+
+// Pause the task
+scheduler.disableTask('AAA_1');
+
+// Resume the task
+scheduler.enableTask('AAA_1');
+
+// Change how often a task runs
+// Again, this value cannot be lower than the global "every"
+scheduler.changeTaskWait('AAA_1', 3000);
+
+// Change it again
+scheduler.changeTaskWait('AAA_1', 300);
+
+// Remove the task manually
+scheduler.remove('AAA_1');
+```
+<br>
+
+## Continue reading if this works for you.
+
+<hr />
+
 ## Purpose
 If you're looking for a fancy sorting algorithm to optimize your web appllication's behaviour to your or someone else's liking, you're in the wrong neighbourhood.
 
@@ -52,37 +97,46 @@ The default interval between each scheduler tick is 0.
 You can either use **new Scheduler(1000)** forcing the scheduler to wake up once a second or skip the parameter and simply use the **changeWait** method.
 
 ## Usage
+### Preferred initialization
 ```javascript
 const Scheduler = require('time-sched');
 
-// Create an instance: you're only supposed to have *ONE* instance
+const scheduler = new Scheduler({
+  // This is how often current tasks are evaluated.
+  // A task cannot be executed faster than this global interval
+  heartbeat: 250,
 
-// v1 - auto start
-const scheduler = new Scheduler().start()
+  // requestAnimationFrame based means...
+  // navigating to another tab stops the execution.
+  // Use "true" if you need your tasks to run in the background
+  keepAlive: true,
+}).start();
+```
 
-// v1.1 - auto start AND set the default tick rate interval for the scheduler itself
-const scheduler = new Scheduler(1000).start()
+### Old style initialization
+```javascript
+const Scheduler = require('time-sched');
 
-// v2 - manual start/stop
-const scheduler = new Scheduler();
+const heartbeat = 250;
+const scheduler = new Scheduler(heartbeat).start();
+```
 
-// v2.2 - manual start/stop AND custom default tick rate
-const scheduler = new Scheduler(1000);
-
-// Change the tick rate in real time
-// In order to avoid bad practices,
-// the new value CANNOT be lower than the custom value provided during creation
-scheduler.changeWait(1000);
-
-// both does what they say
+### Global Start / Stop
+```javascript
+scheduler.stop();
 scheduler.start();
-// scheduler.stop();
+```
 
-// Adding tasks
+### Important
+If you do not provide a `heartbeat` value, the script defaults to `0`
+<br><br>
+
+### Adding tasks
+```javascript
 scheduler.add({
   name: 'AAA',
   interval: 1000,
-  iterations: 7,
+  iterations: 7, // Optional. Task is destroyed afterwards
   callback: (task) => console.log(task.name, task.iteration)
 });
 scheduler.add({
@@ -91,10 +145,33 @@ scheduler.add({
   callback: (task) => console.warn(task.name, task.iteration)});
 scheduler.add({
   name: 'BBB',
-  after: 5000,
+  after: 5000, // Optional. Task is executed and destroyed afterwards
   callback: () => console.error('OH YEAH')
 });
+```
 
+### Managing tasks via the scheduler - **recommended**
+```javascript
+// Pause a task
+scheduler.disableTask('AAA_1');
+
+// Resume a task
+scheduler.enableTask('AAA_1');
+
+// Change how often a task runs
+// Again, this value cannot be lower than the global "every"
+scheduler.changeTaskWait('AAA_1', 3000);
+
+// Change it again
+scheduler.changeTaskWait('AAA_1', 300);
+```
+
+### Managing tasks directly - **not recommended**
+Having references might be a really bad idea.
+Complete tasks are removed from the list.<br>
+If you keep reference to a task that has been destroyed (or failed)<br>
+are caching garbage with
+```javascript
 const task_a1 = Scheduler.list['AAA_1'];
 
 // Enable / disable task
@@ -106,6 +183,11 @@ task_a1.disable();
 // If confused, look at "Adding tasks" again.
 task_a1.interval = 3000; // Task is now being executed every 3 seconds
 task_a1.interval = 300; // Task is now being executed every 300 ms
+```
+
+### Remove a task manually
+```javascript
+scheduler.remove('AAA_1');
 ```
 
 ## Where's the fancy?
