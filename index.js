@@ -55,7 +55,7 @@ function changeRAF(forceFallback) {
 /** ************************* RequestAnimationFrame -  End  ********** */
 
 class Scheduler {
-  constructor(props) {
+  constructor(props = 1000) {
     if (zletools.isNumber(props)) {
       props = { heartbeat: props };
     }
