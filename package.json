@@ -1,6 +1,6 @@
 {
   "name": "time-sched",
-  "version": "1.0.0d",
+  "version": "1.0.0e",
   "description": "RequestAnimationFrame based cheduler replacement for setInterval and setTimeout.",
   "main": "index.js",
   "scripts": {

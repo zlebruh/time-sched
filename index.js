@@ -352,7 +352,7 @@ class Scheduler {
 
   _throwOutOfRange(skipMethodHint = false) {
     const textRange = `Acceptable range is ${this.min}-${this.max}ms.
-    This value CANNOT be lower than the initial "every" value [${this.min}]\n`;
+    This value CANNOT be lower than the initial "heartbeat" value [${this.min}]\n`;
     const textMethodHint = 'Always use the "changeWait" method.';
     
     const text = skipMethodHint

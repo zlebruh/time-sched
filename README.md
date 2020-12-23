@@ -7,7 +7,17 @@ Dumb scheduler that doesn't care about priorities and such
 ```javascript
 const Scheduler = require('time-sched');
 
-const scheduler = new Scheduler({heartbeat: 250}).start();
+const scheduler = new Scheduler({
+  // This is how often current tasks are evaluated.
+  // A task cannot be executed faster than this global interval
+  heartbeat: 250,
+
+  // requestAnimationFrame based means...
+  // navigating to another tab stops the execution.
+  // Use "true" if you need your tasks to run in the background
+  // This is an optional parameter that defaults "false"
+  keepAlive: true,
+}).start();
 
 // Repeating task
 scheduler.add({
@@ -109,6 +119,7 @@ const scheduler = new Scheduler({
   // requestAnimationFrame based means...
   // navigating to another tab stops the execution.
   // Use "true" if you need your tasks to run in the background
+  // This is an optional parameter that defaults "false"
   keepAlive: true,
 }).start();
 ```
